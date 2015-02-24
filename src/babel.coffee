@@ -8,6 +8,7 @@ crypto = require 'crypto'
 fs = require 'fs-plus'
 path = require 'path'
 babel = null # Defer until used
+Grim = null # Defer until used
 
 stats =
   hits: 0
@@ -132,10 +133,13 @@ transpile = (sourceCode, filePath, cachePath) ->
 # either generated on the fly or pulled from cache.
 loadFile = (module, filePath) ->
   sourceCode = fs.readFileSync(filePath, 'utf8')
-  return module._compile(sourceCode, filePath) unless sourceCode.startsWith('"use 6to5"') or
-    sourceCode.startsWith("'use 6to5'") or
-    sourceCode.startsWith('"use babel"') or
-    sourceCode.startsWith("'use babel'")
+  if sourceCode.startsWith('"use babel"') or sourceCode.startsWith("'use babel'")
+    # Continue.
+  else if sourceCode.startsWith('"use 6to5"') or sourceCode.startsWith("'use 6to5'")
+    Grim ?= require 'grim'
+    Grim.deprecate("Use the 'use babel' pragma instead of 'use 6to5' in #{filePath}")
+  else
+    return module._compile(sourceCode, filePath)
 
   cachePath = getCachePath(sourceCode)
   js = getCachedJavaScript(cachePath) ? transpile(sourceCode, filePath, cachePath)
